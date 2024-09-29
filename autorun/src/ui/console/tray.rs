@@ -22,7 +22,7 @@ pub fn replace_window() -> Result<(), trayicon::Error> {
 	let (send, recv) = std::sync::mpsc::channel::<Events>();
 	let icon = include_bytes!("../../../../assets/run.ico");
 	let _trayicon = TrayIconBuilder::new()
-		.sender(send)
+		.sender(move |e| send.send(*e).unwrap())
 		.icon_from_buffer(icon)
 		.tooltip("Open Autorun 🏃")
 		.menu(MenuBuilder::new().item("Open Console", Events::Exit))
