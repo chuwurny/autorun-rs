@@ -1,4 +1,8 @@
-use std::path::{Path, PathBuf};
+use std::{
+	env,
+	path::{Path, PathBuf},
+	sync::LazyLock,
+};
 
 use fs_err as fs;
 
@@ -15,17 +19,30 @@ pub const SETTINGS_PATH: &str = "settings.toml";
 mod path;
 pub use path::FSPath;
 
+static HOME_DIR: LazyLock<PathBuf> = LazyLock::new(|| unsafe {
+	let kernel32 = libloading::Library::new("kernel32").expect("Couldn't load kernel32 module!");
+
+	if kernel32
+		.get::<usize>(c"wine_get_unix_file_name".to_bytes_with_nul())
+		.is_ok()
+	{
+		PathBuf::from("/home")
+			.join(env::var("USER").expect("Failed to get $USER environment variable!"))
+	} else {
+		home::home_dir().expect("Couldn't get your home directory!")
+	}
+});
+
+pub fn home_dir() -> &'static PathBuf {
+	unsafe { &HOME_DIR }
+}
+
 pub fn in_autorun<S: AsRef<Path>>(path: S) -> PathBuf {
-	home::home_dir()
-		.expect("Couldn't get your home directory!")
-		.join("autorun")
-		.join(path.as_ref())
+	home_dir().join("autorun").join(path.as_ref())
 }
 
 pub fn base() -> PathBuf {
-	home::home_dir()
-		.expect("Couldn't get your home directory!")
-		.join("autorun")
+	home_dir().join("autorun")
 }
 
 pub fn read_to_string<P: AsRef<Path>>(path: P) -> std::io::Result<String> {
